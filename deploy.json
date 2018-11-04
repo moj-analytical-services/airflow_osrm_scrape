@@ -1,0 +1,5 @@
+{
+    "mojanalytics-deploy": "v1.0.0",
+    "type": "airflow_dag",
+    "role_name" : "airflow_osrm_scraper"
+}

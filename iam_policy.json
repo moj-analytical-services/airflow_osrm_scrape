@@ -1,0 +1,36 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ListGlueJobFiles",
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": [
+                "arn:aws:s3:::alpha-everyone*",
+                "arn:aws:s3:::alpha-everyone"
+            ]
+        },
+        {
+            "Sid": "Read",
+            "Effect": "Allow",
+            "Action": "s3:GetObject",
+            "Resource": [
+                "arn:aws:s3:::alpha-everyone/travel_time_2/*"
+            ]
+        },
+        {
+            "Sid": "Writeanddelete",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::alpha-everyone/travel_time_2/*"
+            ]
+        }
+    ]
+  }
