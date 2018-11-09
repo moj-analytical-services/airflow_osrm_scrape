@@ -1,36 +1,40 @@
 {
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "ListGlueJobFiles",
-            "Effect": "Allow",
-            "Action": [
-                "s3:ListBucket",
-                "s3:GetBucketLocation"
-            ],
-            "Resource": [
-                "arn:aws:s3:::alpha-everyone*",
-                "arn:aws:s3:::alpha-everyone"
-            ]
-        },
-        {
-            "Sid": "Read",
-            "Effect": "Allow",
-            "Action": "s3:GetObject",
-            "Resource": [
-                "arn:aws:s3:::alpha-everyone/travel_time_2/*"
-            ]
-        },
-        {
-            "Sid": "Writeanddelete",
-            "Effect": "Allow",
-            "Action": [
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": [
-                "arn:aws:s3:::alpha-everyone/travel_time_2/*"
-            ]
-        }
+      {
+        "Sid": "ListGlueJobFiles",
+        "Effect": "Allow",
+        "Action": ["s3:ListBucket"],
+        "Resource": [
+          "arn:aws:s3:::mojap-raw-hist",
+          "arn:aws:s3:::alpha-mojap-curated-open-data"
+        ]
+      },
+      {
+        "Sid": "Read",
+        "Effect": "Allow",
+        "Action": "s3:GetObject",
+        "Resource": [
+          "arn:aws:s3:::mojap-raw-hist/open_data/osrm/*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/osrm/*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*"
+        ]
+      },
+      {
+        "Sid": "Write_and_delete",
+        "Effect": "Allow",
+        "Action": ["s3:PutObject", "s3:DeleteObject"],
+        "Resource": [
+          "arn:aws:s3:::mojap-raw-hist/open_data/osrm/*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/osrm/*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*"
+        ]
+      },
+      {
+        "Sid": "athena",
+        "Effect": "Allow",
+        "Action": ["athena:*"],
+        "Resource": ["*"]
+      }
     ]
   }
