@@ -1,0 +1,30 @@
+{
+    "$schema": "https://raw.githubusercontent.com/moj-analytical-services/etl_manager/schema/etl_manager/specs/table_schema.json",
+    "name": "lsoa_travel_time",
+    "description": "",
+    "data_format": "parquet",
+    "columns": [
+        {
+            "name": "from_lsoa",
+            "type": "character",
+            "description": "from_lsoa"
+        },
+        {
+            "name": "to_lsoa",
+            "type": "character",
+            "description": "to_lsoa"
+        },
+        {
+            "name": "duration_seconds",
+            "type": "double",
+            "description": "duration_seconds"
+        },
+        {
+            "name": "distance_meters",
+            "type": "double",
+            "description": "distance_meters"
+        }
+    ],
+    "partitions": [],
+    "location": "osrm"
+}

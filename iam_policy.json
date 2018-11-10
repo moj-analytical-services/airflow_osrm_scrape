@@ -7,7 +7,9 @@
         "Action": ["s3:ListBucket"],
         "Resource": [
           "arn:aws:s3:::mojap-raw-hist",
-          "arn:aws:s3:::alpha-mojap-curated-open-data"
+          "arn:aws:s3:::alpha-mojap-curated-open-data",
+          "arn:aws:s3:::alpha-everyone"
+
         ]
       },
       {
@@ -17,7 +19,9 @@
         "Resource": [
           "arn:aws:s3:::mojap-raw-hist/open_data/osrm/*",
           "arn:aws:s3:::alpha-mojap-curated-open-data/osrm/*",
-          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*"
+          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*",
+          "arn:aws:s3:::alpha-everyone/travel_time*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/_GlueJobs_/*"
         ]
       },
       {
@@ -27,7 +31,9 @@
         "Resource": [
           "arn:aws:s3:::mojap-raw-hist/open_data/osrm/*",
           "arn:aws:s3:::alpha-mojap-curated-open-data/osrm/*",
-          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*"
+          "arn:aws:s3:::alpha-mojap-curated-open-data/partition_temp_dir/*",
+          "arn:aws:s3:::alpha-everyone/travel_time*",
+          "arn:aws:s3:::alpha-mojap-curated-open-data/_GlueJobs_/*"
         ]
       },
       {
@@ -35,6 +41,54 @@
         "Effect": "Allow",
         "Action": ["athena:*"],
         "Resource": ["*"]
-      }
+      },
+      {
+        "Sid": "glur",
+        "Effect": "Allow",
+        "Action": ["glue:*"],
+        "Resource": ["*"]
+      },
+      {
+        "Sid": "PassRoleToGlueService",
+        "Effect": "Allow",
+        "Action": [
+            "iam:PassRole"
+        ],
+        "Resource": "arn:aws:iam::593291632749:role/airflow_osrm_scraper",
+        "Condition": {
+            "StringLike": {
+                "iam:PassedToService": [
+                    "glue.amazonaws.com"
+                ]
+            }
+        }
+    },
+    {
+      "Sid": "HeadBucket",
+      "Effect": "Allow",
+      "Action": "s3:HeadBucket",
+      "Resource": "*"
+    },
+    {
+      "Sid": "PutMetricData",
+      "Effect": "Allow",
+      "Action": [
+          "cloudwatch:PutMetricData"
+      ],
+      "Resource": "*"
+  },
+  {
+      "Effect": "Allow",
+      "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+      ],
+      "Resource": [
+          "arn:aws:logs:*:*:/aws-glue/*"
+      ]
+  }
+
+
     ]
   }
