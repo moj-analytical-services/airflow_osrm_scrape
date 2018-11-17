@@ -3,29 +3,58 @@ import requests
 import geopandas
 import json
 
-def result_to_table_matrix(result, source, dest, source_field, source_name):
+def result_to_table_matrix(result, source, dest):
+    """Take the result of make_request and turn it into a pandas dataframe
 
-    points_source = [s[source_field] for s in source]
-    points_dest = ([s[source_field] for s in dest])
+    Args:
+        result: The json data structure returned from the OSRM API:
+        source:  The list of source points (lat lng) with their geography_id (e.g. 'E0000010') and geography_type (e.g. 'lsoa')
+        dest:  The list of destination points (lat lng) with their geography_id (e.g. 'E0000010') and geography_type (e.g. 'lsoa')
 
-    points = points_source +  points_dest
+    Returns:
+        A pandas dataframe of the drivetimes
+    """
 
-    df1 = pd.DataFrame(result["durations"])
-    df1.columns = points
-    df1.index = points
-    df1[source_name] = points
-    df1 = df1.melt(id_vars=[source_name])
-    df1.rename(columns={"value": "duration_seconds", source_name: f"from_{source_name}", "variable": f"to_{source_name}"}, inplace=True)
+    points = source +  dest
+    source_geography_id =  [p["geography_id"] for p in points]
+    source_geography_type = [p["geography_type"] for p in points]
 
-    df2 = pd.DataFrame(result["distances"])
-    df2.columns = points
-    df2.index = points
-    df2[source_name] = points
-    df2 = df2.melt(id_vars=source_name)
-    df2.rename(columns={"value": "distance_meters"}, inplace=True)
-    df2.drop([source_name, "variable"], inplace=True, axis=1)
+    def get_df_of_values(value_variable):
+
+        if value_variable == "durations":
+            value_col = "duration_sections"
+
+        if value_variable == "distances":
+            value_col = "distance_meters"
+
+        df = pd.DataFrame(result[value_variable])
+
+        tuples = list(zip(source_geography_id, source_geography_type))
+
+        df.index = tuples
+        df.columns = tuples
+
+        df["source_geography_id"] = source_geography_id
+        df["source_geography_type"] = source_geography_type
+        df = df.melt(id_vars=["source_geography_id", "source_geography_type"])
+
+        # Unpack index of tuples
+        df[['destination_geography_id', 'destination_geography_type']] = df['variable'].apply(pd.Series)
+        df.drop("variable", axis=1, inplace=True)
+        df.rename(columns={"value": value_col}, inplace=True)
+        col_order = ["source_geography_id","source_geography_type","destination_geography_id","destination_geography_type",value_col]
+        df = df[col_order]
+
+        return df
+
+
+
+    df1 = get_df_of_values("durations")
+
+    df2 = get_df_of_values("distances")
+    df2.drop(["source_geography_id","source_geography_type","destination_geography_id","destination_geography_type"], axis=1, inplace=True)
     df = pd.concat([df1, df2], axis=1)
-    df = df.drop_duplicates([f"from_{source_name}", f"to_{source_name}"])
+    df = df.drop_duplicates([f"source_geography_id", f"destination_geography_id"])
 
     return df
 
@@ -39,35 +68,59 @@ def make_request(source_list, dest_list):
     return result
 
 
-def scrape(BLOCK_SIZE, csv_path, out_base_path, source_field='lsoa11cd', source_name='lsoa'):
+def scrape(BLOCK_SIZE, df_to_scrape, out_base_path):
+    """Gather drivetime information for all (lat,lng) combinations in df_to_scrape and output to dataframe
 
-    df_to_scrape = pd.read_csv(csv_path)
-    # df_to_scrape = df_to_scrape[:55]
-    jsons = df_to_scrape.to_dict(orient="records")
+    Args:
+        BLOCK_SIZE: Sets the size of each request to the osrm table endpoint -ie how big the table is
+        df_to_scrape: A datafarme with columns 'lat' 'lng' 'geography_id' (e.g. E01008657), and 'geography_type' (e.g. lsoa)
+        out_base_path: A string pointing to the base path of the output (e.g. on disk or in s3)
+
+    Returns:
+        None.  This function has a side effect of writing outputs to disk
+    """
+
+    # Split records into all combinations of source and destination geography type - this will be our file system partitioning scheme
+
+    df_to_scrape["geography_type"] = df_to_scrape["geography_type"].astype(str)
+    df_to_scrape["geography_id"] = df_to_scrape["geography_id"].astype(str)
+
+    records_to_scrape = df_to_scrape.to_dict(orient="records")
 
     for row in range(10000):
         dfs = []
         start_row = row * BLOCK_SIZE
         end_row = (row+1) * BLOCK_SIZE
-        source_list = jsons[start_row:end_row]
+        source_list = records_to_scrape[start_row:end_row]
         if len(source_list) == 0:
             break
 
-        for col in range(row+1, 10000):
+        # This logic accounts for the possibility that the block size < num records, in which case nothing would happen
+        if len(records_to_scrape) <= BLOCK_SIZE:
+            col_adjustment = 0
+        else:
+            col_adjustment = 1
+
+        print(f"Len records to scrape {len(records_to_scrape)}")
+        print(f"Block size {BLOCK_SIZE}")
+        print(f"Col adjustment {col_adjustment}")
+
+        for col in range(row+col_adjustment, 10000):
             start_col = col * BLOCK_SIZE
             end_col = (col+1) * BLOCK_SIZE
-            print(f"Start row: {start_row}, End row: {end_row}, Start col: {start_col}, End col: {end_col}")
-            source_list = jsons[start_row:end_row]
-            dest_list = jsons[start_col:end_col]
+
+            dest_list = records_to_scrape[start_col:end_col]
             if len(dest_list) == 0:
                 break
 
             result = make_request(source_list, dest_list)
-            df = result_to_table_matrix(result, source_list, dest_list, source_field, source_name)
+            df = result_to_table_matrix(result, source_list, dest_list)
             dfs.append(df)
         if len(dfs) > 0:
             df_all_row = pd.concat(dfs)
-            df_all_row.to_parquet(f"{out_base_path}/sr{start_row}-er{end_row}-sc{start_col}-ec{end_col}.parquet")
+            out_path = f"{out_base_path}/sr{start_row}-er{end_row}-sc{0}-ec{(col)*BLOCK_SIZE}.parquet"
+            df_all_row.to_parquet(out_path)
+            print(f"Written file: {out_path}")
             del df_all_row
             del dfs
 
