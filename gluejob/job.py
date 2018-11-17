@@ -3,10 +3,6 @@ from pyspark.sql import SparkSession
 sc = SparkContext.getOrCreate()
 spark = SparkSession(sc)
 
-df = spark.read.parquet("s3a://mojap-raw-hist/open_data/osrm/geographytype=lsoa")
-dfdd = df.drop_duplicates(["from_lsoa", "to_lsoa"])
-dfdd.write.parquet("s3a://alpha-mojap-curated-open-data/osrm/geographytype=lsoa", mode="overwrite")
-
-df = spark.read.parquet("s3a://mojap-raw-hist/open_data/osrm/geographytype=msoa")
-dfdd = df.drop_duplicates(["from_msoa", "to_msoa"])
-dfdd.write.parquet("s3a://alpha-mojap-curated-open-data/osrm/geographytype=msoa", mode="overwrite")
+df = spark.read.parquet("s3a://mojap-raw-hist/open_data/osrm/combinations=courts_lsoas_msoas")
+dfdd = df.drop_duplicates(["source_geography_id", "source_geography_type", "destination_geography_id", "destination_geography_type"])
+dfdd.write.partitionBy(["source_geography_type", "destination_geography_type"]).parquet("s3a://alpha-mojap-curated-open-data/osrm/", mode="overwrite")
